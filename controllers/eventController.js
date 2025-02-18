@@ -78,6 +78,7 @@ exports.getAllEvents = async (req, res) => {
       .sort(sortOption)
       .populate("createdBy", "name");
 
+    console.log(req.query); // Debugging: Print query parameters
     res.json(events);
   } catch (error) {
     return res.status(500).json({ message: "Error fetching events", error });
