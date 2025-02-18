@@ -63,9 +63,9 @@ exports.getAllEvents = async (req, res) => {
     }
 
     let sortOption = {};
-    if (sort === "newest") sortOption = { date: -1 };
-    if (sort === "oldest") sortOption = { date: 1 };
-    if (sort === "attendees") sortOption = { attendees: -1 };
+    if (sort === "newest") sortOption.date = { date: -1 };
+    if (sort === "oldest") sortOption.date = { date: 1 };
+    if (sort === "attendees") sortOption.attendees = { attendees: -1 };
 
     const events = await Event.find(query)
       .sort(sortOption || { date: -1 }) // ✅ Default sorting
