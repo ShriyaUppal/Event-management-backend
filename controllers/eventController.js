@@ -1,6 +1,7 @@
 const Event = require("../models/Event");
 const mongoose = require("mongoose");
 
+// ✅ Create Event
 exports.createEvent = async (req, res) => {
   try {
     const {
@@ -12,31 +13,24 @@ exports.createEvent = async (req, res) => {
       tags,
     } = req.body;
 
-    // ✅ Validate required fields
     if (!name || !description || !date || !category) {
       return res
         .status(400)
         .json({ message: "All fields except tags and location are required." });
     }
 
-    // ✅ Convert category to lowercase before validation
     const formattedCategory = category.toLowerCase();
-
-    // ✅ Check if the category is valid
     const validCategories = ["conference", "workshop", "webinar", "meetup"];
     if (!validCategories.includes(formattedCategory)) {
       return res.status(400).json({ message: "Invalid category selected" });
     }
 
-    // ✅ Ensure `tags` is always an array
-    let tagArray = [];
-    if (Array.isArray(tags)) {
-      tagArray = tags.map((tag) => tag.trim()); // ✅ If already an array, trim each element
-    } else if (typeof tags === "string") {
-      tagArray = tags.split(",").map((tag) => tag.trim()); // ✅ If string, split by comma
-    }
+    let tagArray = Array.isArray(tags)
+      ? tags.map((tag) => tag.trim())
+      : typeof tags === "string"
+      ? tags.split(",").map((tag) => tag.trim())
+      : [];
 
-    // ✅ Create a new event
     const newEvent = new Event({
       name,
       description,
@@ -44,7 +38,7 @@ exports.createEvent = async (req, res) => {
       location,
       createdBy: req.user.id,
       attendees: [],
-      category: formattedCategory, // ✅ Use lowercase category
+      category: formattedCategory,
       tags: tagArray,
     });
 
@@ -58,46 +52,41 @@ exports.createEvent = async (req, res) => {
   }
 };
 
+// ✅ Get All Events with Search & Sorting
 exports.getAllEvents = async (req, res) => {
   try {
     const { search, sort } = req.query;
-
     let query = {};
 
-    // 🔍 Apply search filter (case-insensitive)
     if (search) {
       query.name = { $regex: search, $options: "i" };
     }
 
     let sortOption = {};
-    if (sort === "newest") sortOption.date = -1; // Descending
-    if (sort === "oldest") sortOption.date = 1; // Ascending
-    if (sort === "attendees") sortOption.attendees = -1; // Most attendees first
+    if (sort === "newest") sortOption = { date: -1 };
+    if (sort === "oldest") sortOption = { date: 1 };
+    if (sort === "attendees") sortOption = { attendees: -1 };
 
     const events = await Event.find(query)
-      .sort(sortOption)
+      .sort(sortOption || { date: -1 }) // ✅ Default sorting
       .populate("createdBy", "name");
 
-    console.log(req.query); // Debugging: Print query parameters
     res.json(events);
   } catch (error) {
     return res.status(500).json({ message: "Error fetching events", error });
   }
 };
 
-//Get Single events
+// ✅ Get Single Event
 exports.getEventById = async (req, res) => {
   try {
-    let eventId = req.params.id.trim(); // Remove spaces & newline characters
-    console.log("🔍 Requested Event ID:", eventId);
+    let eventId = req.params.id.trim();
 
-    // Validate MongoDB ObjectId
     if (!mongoose.Types.ObjectId.isValid(eventId)) {
       return res.status(400).json({ message: "Invalid event ID format" });
     }
 
     const event = await Event.findById(eventId).populate("createdBy", "name");
-    console.log("📌 Fetched Event:", event);
 
     if (!event) return res.status(404).json({ message: "Event not found" });
 
@@ -108,12 +97,11 @@ exports.getEventById = async (req, res) => {
   }
 };
 
-//Update Event
+// ✅ Update Event
 exports.updateEvent = async (req, res) => {
   try {
-    let eventId = req.params.id.trim(); // Trim spaces and newline characters
+    let eventId = req.params.id.trim();
 
-    // Validate ObjectId format
     if (!mongoose.Types.ObjectId.isValid(eventId)) {
       return res.status(400).json({ message: "Invalid Event ID format" });
     }
@@ -133,7 +121,7 @@ exports.updateEvent = async (req, res) => {
 
     const updatedEvent = await Event.findByIdAndUpdate(
       eventId,
-      { eventName: updatedName, description, date, category },
+      { name: updatedName, description, date, category }, // ✅ Fix field name
       { new: true, runValidators: true }
     );
 
@@ -152,18 +140,19 @@ exports.updateEvent = async (req, res) => {
   }
 };
 
-//Delete Event
+// ✅ Delete Event
 exports.deleteEvent = async (req, res) => {
   try {
-    let eventId = req.params.id.trim(); // Ensure no spaces or newline issues
-    console.log("Received Event ID:", `"${eventId}"`); // Debugging log
+    let eventId = req.params.id.trim();
 
-    // Validate MongoDB ObjectId
+    if (!eventId) {
+      return res.status(400).json({ message: "Event ID is required" });
+    }
+
     if (!mongoose.Types.ObjectId.isValid(eventId)) {
       return res.status(400).json({ message: "Invalid event ID format" });
     }
 
-    // Attempt to delete the event
     const event = await Event.findByIdAndDelete(eventId);
     if (!event) {
       return res.status(404).json({ message: "Event not found" });
