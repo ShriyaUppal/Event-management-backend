@@ -73,7 +73,9 @@ exports.getAllEvents = async (req, res) => {
 
     res.json(events);
   } catch (error) {
-    return res.status(500).json({ message: "Error fetching events", error });
+    return res
+      .status(500)
+      .json({ message: "Error fetching events", error: error.message });
   }
 };
 
